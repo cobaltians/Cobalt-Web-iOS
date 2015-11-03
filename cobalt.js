@@ -967,7 +967,7 @@ var cobalt = {
     init: function () {
         cobalt.platform = { is : "iOS" };
 
-        if (typeof cobaltViewController === "undefined") {
+        if (typeof CobaltViewController === "undefined") {
             cobalt.divLog('Warning : cobaltViewController undefined. We probably are below ios7.');
             cobalt.adapter.isBelowIOS7 = true;
         } else {
