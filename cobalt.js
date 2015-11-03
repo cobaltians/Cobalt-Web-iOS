@@ -968,7 +968,7 @@ var cobalt = {
         cobalt.platform = { is : "iOS" };
 
         if (typeof CobaltViewController === "undefined") {
-            cobalt.divLog('Warning : cobaltViewController undefined. We probably are below ios7.');
+            cobalt.divLog('Warning : CobaltViewController undefined. We probably are below ios7.');
             cobalt.adapter.isBelowIOS7 = true;
         } else {
             cobalt.adapter.isBelowIOS7 = false;
@@ -990,7 +990,7 @@ var cobalt = {
             if (obj && !cobalt.debugInBrowser) {
                 cobalt.divLog('sending', obj);
                 try {
-                    cobaltViewController.onCobaltMessage(JSON.stringify(obj));
+                    CobaltViewController.onCobaltMessage(JSON.stringify(obj));
                 } catch (e) {
                     cobalt.log('ERROR : cant connect to native.' + e)
                 }
