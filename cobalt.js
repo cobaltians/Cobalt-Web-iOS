@@ -962,13 +962,22 @@ var cobalt = {
     pipelineRunning: false,//bool to know if new sends should go to pipe or go to native
 
     isBelowIOS7: false,
+    isWKWebview: false,
 
     init: function () {
         cobalt.platform = { is : "iOS" };
-
+        this.detectPlatform();
+    },
+    detectPlatform : function(){
         if (typeof CobaltViewController === "undefined") {
-            cobalt.divLog('Warning : CobaltViewController undefined. We probably are below ios7.');
-            cobalt.adapter.isBelowIOS7 = true;
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.observe
+                && window.webkit.messageHandlers.observe.postMessage){
+                cobalt.divLog('Warning : CobaltViewController undefined. we are on WKWebview');
+                cobalt.adapter.isWKWebview = true;
+            }else{
+                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.observe.postMessage undefined. we are on iOS6');
+                cobalt.adapter.isBelowIOS7 = true;
+            }
         } else {
             cobalt.adapter.isBelowIOS7 = false;
         }
@@ -983,15 +992,28 @@ var cobalt = {
     },
     //send native stuff
     send: function (obj) {
+        //TODO remove this once we are sur it works
+        this.detectPlatform();
+        
         if (cobalt.adapter.isBelowIOS7) {
             cobalt.adapter.ios6.send(obj);
         } else {
             if (obj && !cobalt.debugInBrowser) {
                 cobalt.divLog('sending', obj);
-                try {
-                    CobaltViewController.onCobaltMessage(JSON.stringify(obj));
-                } catch (e) {
-                    cobalt.log('ERROR : cant connect to native.' + e)
+                if (cobalt.adapter.isWKWebview){
+                    try {
+                        window.webkit.messageHandlers.observe.postMessage(JSON.stringify(obj));
+                    } catch (e) {
+                        cobalt.divLog('ERROR : cant connect to native.' + e)
+                    }
+                    
+                }else{
+                    try {
+                        CobaltViewController.onCobaltMessage(JSON.stringify(obj));
+                    } catch (e) {
+                        cobalt.divLog('ERROR : cant connect to native.' + e)
+                    }
+                    
                 }
 
             }
