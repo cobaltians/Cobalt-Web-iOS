@@ -999,7 +999,7 @@ var cobalt = {
                 cobalt.divLog('sending', obj);
                 if (cobalt.adapter.isWKWebview){
                     try {
-                        window.webkit.messageHandlers.observe.postMessage(JSON.stringify(obj));
+                        window.webkit.messageHandlers.cobalt.postMessage(JSON.stringify(obj));
                     } catch (e) {
                         cobalt.divLog('ERROR : cant connect to native.' + e)
                     }
