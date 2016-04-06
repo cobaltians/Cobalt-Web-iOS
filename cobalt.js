@@ -966,21 +966,24 @@ var cobalt = {
 
     init: function () {
         cobalt.platform = { is : "iOS" };
-        this.detectPlatform();
+        this.detectPlatformIfNeeded();
     },
-    detectPlatform : function(){
-        if (typeof CobaltViewController === "undefined") {
-            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
-                && window.webkit.messageHandlers.cobalt.postMessage){
-                cobalt.divLog('We are on WKWebview');
-                cobalt.adapter.isWKWebview = true;
-            }else{
-                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.cobalt.postMessage undefined. we are on iOS6');
-                cobalt.adapter.isBelowIOS7 = true;
-            }
-        } else {
-            cobalt.adapter.isBelowIOS7 = false;
-        }
+    detectPlatformIfNeeded : function(){
+		if (!cobalt.adapter.platformDetected){
+	        if (typeof CobaltViewController === "undefined") {
+	            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
+	                && window.webkit.messageHandlers.cobalt.postMessage){
+	                cobalt.divLog('We are on WKWebview');
+	                cobalt.adapter.isWKWebview = true;
+	            }else{
+	                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.cobalt.postMessage undefined. we are on iOS6');
+	                cobalt.adapter.isBelowIOS7 = true;
+	            }
+	        } else {
+	            cobalt.adapter.isBelowIOS7 = false;
+	        }
+			cobalt.adapter.platformDetected = true;			
+		}
     },
     // handle callbacks sent by native side
     handleCallback: function (json) {
@@ -992,6 +995,7 @@ var cobalt = {
     },
     //send native stuff
     send: function (obj) {
+		this.detectPlatformIfNeeded();
         if (cobalt.adapter.isBelowIOS7) {
             cobalt.adapter.ios6.send(obj);
         } else {
