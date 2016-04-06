@@ -970,12 +970,12 @@ var cobalt = {
     },
     detectPlatform : function(){
         if (typeof CobaltViewController === "undefined") {
-            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.observe
-                && window.webkit.messageHandlers.observe.postMessage){
-                cobalt.divLog('Warning : CobaltViewController undefined. we are on WKWebview');
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
+                && window.webkit.messageHandlers.cobalt.postMessage){
+                cobalt.divLog('We are on WKWebview');
                 cobalt.adapter.isWKWebview = true;
             }else{
-                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.observe.postMessage undefined. we are on iOS6');
+                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.cobalt.postMessage undefined. we are on iOS6');
                 cobalt.adapter.isBelowIOS7 = true;
             }
         } else {
@@ -992,9 +992,6 @@ var cobalt = {
     },
     //send native stuff
     send: function (obj) {
-        //TODO remove this once we are sur it works
-        this.detectPlatform();
-        
         if (cobalt.adapter.isBelowIOS7) {
             cobalt.adapter.ios6.send(obj);
         } else {
