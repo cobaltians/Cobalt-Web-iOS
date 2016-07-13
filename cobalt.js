@@ -68,7 +68,9 @@ var cobalt = {
         cobalt.plugins.init();
 
         //send cobalt is ready event to native
-        cobalt.send({'type': 'cobaltIsReady', version: this.version})
+        if (!options.manualReady){
+            cobalt.send({'type': 'cobaltIsReady', version: this.version})
+        }
     },
     addEventListener: function (eventName, handlerFunction) {
         if (typeof eventName === "string" && typeof handlerFunction === "function") {
@@ -953,7 +955,7 @@ var cobalt = {
     isBelowIOS7: false,
 
     init: function () {
-        cobalt.platform = { is : "iOS" };
+        cobalt.platform = { name: "iOS", isIOS: true, isAndroid: false };
 
         if (typeof CobaltViewController === "undefined") {
             cobalt.divLog('Warning : CobaltViewController undefined. We probably are below ios7.');
