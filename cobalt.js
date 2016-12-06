@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 var cobalt = {
-    version: '0.5.0',
+    version: '0.5.1',
     events: {}, //objects of events defined by the user
     debug: false,
     debugInBrowser: false,
@@ -68,7 +68,9 @@ var cobalt = {
         cobalt.plugins.init();
 
         //send cobalt is ready event to native
-        cobalt.send({'type': 'cobaltIsReady', version: this.version})
+        if (!options.manualReady){
+            cobalt.send({'type': 'cobaltIsReady', version: this.version})
+        }
     },
     addEventListener: function (eventName, handlerFunction) {
         if (typeof eventName === "string" && typeof handlerFunction === "function") {
@@ -195,30 +197,19 @@ var cobalt = {
                 }
             }
         },
-        //cobalt.navigate.pop();
-        pop: function (data) {
-            cobalt.send({"type": "navigation", "action": "pop", data: {data: data}});
-
+        //cobalt.navigate.popTo({ page : "next.html", controller:"myController", data :{}});
+        pop: function (options) {
+            cobalt.send({
+                type: "navigation",
+                action: "pop",
+                data: {
+                    page: options && options.page,
+                    controller: options && options.controller,
+                    data: options && options.data
+                }
+            });
             if (cobalt.debugInBrowser && window.event && window.event.altKey) {
                 window.close();
-            }
-        },
-        //cobalt.navigate.popTo({ page : "next.html", controller:"myController" });
-        popTo: function (options) {
-            if (options && (options.page || options.controller)) {
-                cobalt.send({
-                    type: "navigation",
-                    action: "pop",
-                    data: {
-                        page: options.page,
-                        controller: options.controller,
-                        data: options.data
-                    }
-                });
-
-                if (cobalt.debugInBrowser && window.event && window.event.altKey) {
-                    window.close();
-                }
             }
         },
         //cobalt.navigate.replace({ page : "next.html", controller:"myController", animated:false });
@@ -958,65 +949,22 @@ var cobalt = {
     //
     //IOS ADAPTER
     //
-    pipeline: [], //array of sends waiting to go to native
-    pipelineRunning: false,//bool to know if new sends should go to pipe or go to native
-
-    isBelowIOS7: false,
-    isWKWebview: false,
-
     init: function () {
-        cobalt.platform = { is : "iOS" };
-        this.detectPlatformIfNeeded();
-    },
-    detectPlatformIfNeeded : function(){
-		if (!cobalt.adapter.platformDetected){
-	        if (typeof CobaltViewController === "undefined") {
-	            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
-	                && window.webkit.messageHandlers.cobalt.postMessage){
-	                cobalt.divLog('We are on WKWebview');
-	                cobalt.adapter.isWKWebview = true;
-	            }else{
-	                cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.cobalt.postMessage undefined. we are on iOS6');
-	                cobalt.adapter.isBelowIOS7 = true;
-	            }
-	        } else {
-	            cobalt.adapter.isBelowIOS7 = false;
-	        }
-			cobalt.adapter.platformDetected = true;			
-		}
-    },
-    // handle callbacks sent by native side
-    handleCallback: function (json) {
-        if (cobalt.adapter.isBelowIOS7) {
-            cobalt.adapter.ios6.handleCallback(json);
-        } else {
-            cobalt.defaultBehaviors.handleCallback(json);
-        }
+        cobalt.platform = { name: "iOS", isIOS: true, isAndroid: false };
     },
     //send native stuff
     send: function (obj) {
-		this.detectPlatformIfNeeded();
-        if (cobalt.adapter.isBelowIOS7) {
-            cobalt.adapter.ios6.send(obj);
-        } else {
-            if (obj && !cobalt.debugInBrowser) {
-                cobalt.divLog('sending', obj);
-                if (cobalt.adapter.isWKWebview){
-                    try {
-                        window.webkit.messageHandlers.cobalt.postMessage(JSON.stringify(obj));
-                    } catch (e) {
-                        cobalt.divLog('ERROR : cant connect to native.' + e)
-                    }
-                    
-                }else{
-                    try {
-                        CobaltViewController.onCobaltMessage(JSON.stringify(obj));
-                    } catch (e) {
-                        cobalt.divLog('ERROR : cant connect to native.' + e)
-                    }
-                    
+        if (obj && !cobalt.debugInBrowser) {
+            cobalt.divLog('sending', obj);
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
+                && window.webkit.messageHandlers.cobalt.postMessage){
+                try {
+                    window.webkit.messageHandlers.cobalt.postMessage(JSON.stringify(obj));
+                } catch (e) {
+                    cobalt.log('ERROR : cant stringify message to send to native', e);
                 }
-
+            } else {
+                cobalt.divLog('ERROR : cant connect to native.');
             }
         }
     },
@@ -1037,46 +985,8 @@ var cobalt = {
             });
         }
     },
-
-    ios6: {
-        // iOS < 7 is using an old-school url change hack to send messages from web to native.
-        // Because of the url change, only one message can be sent to the native at a time.
-        // The acquitement sent by native once each event has been received ensure this behavior.
-        // Messages are queued and sent one after the other as soon as the acq is received.
-        handleCallback: function (json) {
-            switch (json.callback) {
-                case "callbackSimpleAcquitment":
-                    cobalt.divLog("received message acquitement");
-                    cobalt.adapter.ios6.unpipe();
-                    if (cobalt.adapter.pipeline.length == 0) {
-                        cobalt.divLog('end of ios message stack');
-                        cobalt.adapter.pipelineRunning = false;
-                    }
-                    break;
-                default:
-                    cobalt.tryToCallCallback(json);
-                    break;
-            }
-        },
-        send: function (obj) {
-            cobalt.divLog('adding to ios message stack', obj);
-            cobalt.adapter.pipeline.push(obj);
-            if (!cobalt.adapter.pipelineRunning) {
-                cobalt.adapter.ios6.unpipe()
-            }
-        },
-        //unpipe elements when receiving a ACK from ios.
-        unpipe: function () {
-            cobalt.adapter.pipelineRunning = true;
-            var objToSend = cobalt.adapter.pipeline.shift();
-            if (objToSend && !cobalt.debugInBrowser) {
-                cobalt.divLog('sending', objToSend);
-                document.location.href = encodeURIComponent("cob@l7#k&y" + JSON.stringify(objToSend));
-            }
-        }
-    },
-
     //default behaviours
+    handleCallback: cobalt.defaultBehaviors.handleCallback,
     handleEvent: cobalt.defaultBehaviors.handleEvent,
     handleUnknown: cobalt.defaultBehaviors.handleUnknown,
     navigateToModal: cobalt.defaultBehaviors.navigateToModal,
