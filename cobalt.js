@@ -949,22 +949,44 @@ var cobalt = {
     //
     //IOS ADAPTER
     //
+    isWKWebview: false,
     init: function () {
         cobalt.platform = { name: "iOS", isIOS: true, isAndroid: false };
+        this.detectPlatformIfNeeded();
+    },
+    detectPlatformIfNeeded : function(){
+        if (!cobalt.adapter.platformDetected){
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
+                && window.webkit.messageHandlers.cobalt.postMessage){
+                cobalt.divLog('We are on WKWebview');
+                cobalt.adapter.isWKWebview = true;
+            }else{
+                if (typeof CobaltViewController === "undefined") {
+                    cobalt.divLog('Warning : CobaltViewController and webkit.messageHandlers.cobalt.postMessage undefined.');
+                }
+            }
+            cobalt.adapter.platformDetected = true;            
+        }
     },
     //send native stuff
     send: function (obj) {
+        this.detectPlatformIfNeeded();
         if (obj && !cobalt.debugInBrowser) {
             cobalt.divLog('sending', obj);
-            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cobalt
-                && window.webkit.messageHandlers.cobalt.postMessage){
+            if (cobalt.adapter.isWKWebview){
                 try {
                     window.webkit.messageHandlers.cobalt.postMessage(JSON.stringify(obj));
                 } catch (e) {
-                    cobalt.log('ERROR : cant stringify message to send to native', e);
+                    cobalt.divLog('ERROR : cant connect to native.' + e)
                 }
-            } else {
-                cobalt.divLog('ERROR : cant connect to native.');
+                
+            }else{
+                try {
+                    CobaltViewController.onCobaltMessage(JSON.stringify(obj));
+                } catch (e) {
+                    cobalt.divLog('ERROR : cant connect to native.' + e)
+                }
+                
             }
         }
     },
